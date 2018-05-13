@@ -18,7 +18,7 @@ listSongs songs =
 
 displaySong : Data.Song -> E.Element S.Styles variation msg
 displaySong song =
-    E.link (Route.href <| Route.Player "song/youtube_id") <|
+    E.link (Route.href <| Route.Player song.youtube_id) <|
         E.row S.SongItem
             [ A.spacing 5 ]
             [ displaySongImg song

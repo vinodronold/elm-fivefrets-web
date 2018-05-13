@@ -1,6 +1,7 @@
 module Types exposing (..)
 
 import Json.Decode as Decode
+import UrlParser as Url
 
 
 ---------------------------------------------------------------------------------------------------
@@ -13,6 +14,16 @@ type YouTubeID
 decodeYouTubeID : Decode.Decoder YouTubeID
 decodeYouTubeID =
     Decode.map YouTubeID Decode.string
+
+
+youTubeIDParser : Url.Parser (YouTubeID -> a) a
+youTubeIDParser =
+    Url.custom "SONG" (Ok << YouTubeID)
+
+
+youTubeIDtoString : YouTubeID -> String
+youTubeIDtoString (YouTubeID s) =
+    s
 
 
 

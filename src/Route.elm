@@ -8,19 +8,20 @@ module Route
 
 import Navigation exposing (Location)
 import UrlParser as Url exposing ((</>))
+import Types
 
 
 type Route
     = Root
     | Home
-    | Player String
+    | Player Types.YouTubeID
 
 
 route : Url.Parser (Route -> a) a
 route =
     Url.oneOf
         [ Url.map Home (Url.s "")
-        , Url.map Player (Url.s "player" </> Url.string)
+        , Url.map Player (Url.s "player" </> Types.youTubeIDParser)
         ]
 
 
@@ -36,7 +37,7 @@ href page =
                     []
 
                 Player youTubeID ->
-                    [ "player", youTubeID ]
+                    [ "player", Types.youTubeIDtoString youTubeID ]
     in
         "#/" ++ String.join "/" pieces
 

@@ -170,8 +170,15 @@ setRoute maybeRoute model =
             model ! [ Route.modifyUrl Route.Home ]
 
         Just Route.Home ->
-            { model | navOpen = False, pageState = Loading Spinner.init }
-                ! [ Task.attempt HomeLoaded HomePage.load ]
+            let
+                ( pageState, cmd ) =
+                    if (Dict.isEmpty model.songs) then
+                        ( Loading Spinner.init, Task.attempt HomeLoaded HomePage.load )
+                    else
+                        ( Loaded Home, Cmd.none )
+            in
+                { model | navOpen = False, pageState = pageState }
+                    ! [ cmd ]
 
         Just (Route.Player youTubeID) ->
             { model | navOpen = False, pageState = Loading Spinner.init }
