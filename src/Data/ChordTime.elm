@@ -1,13 +1,18 @@
-module Data.ChordTime exposing (ChordTime, chordName, getTime, sample)
+module Data.ChordTime exposing (ChordTime, getTime, getChords)
 
 import Time exposing (Time)
+import Types
+import Config
+import Http
+import Json.Decode as Decode
+import List.Extra exposing ((!!))
 
 
 -----------------------------------------------------------------------
 
 
 type alias ChordTime =
-    ( Chord, Time )
+    ( Time, Types.Chord )
 
 
 getTime : Maybe ChordTime -> Time
@@ -16,7 +21,7 @@ getTime chordTime =
         Nothing ->
             0
 
-        Just ( _, t ) ->
+        Just ( t, _ ) ->
             t
 
 
@@ -24,157 +29,69 @@ getTime chordTime =
 -----------------------------------------------------------------------
 
 
-type alias Chord =
-    ( Note, Quality )
+getChords : Types.YouTubeID -> Http.Request (List ChordTime)
+getChords youTubeID =
+    let
+        requestUrl =
+            (Types.urlToString Config.apiUrl) ++ "/chords/" ++ Types.youTubeIDtoString youTubeID
+
+        request =
+            Http.get requestUrl decodeChordTimeList
+    in
+        request
 
 
-chordName : Chord -> String
-chordName ( note, quality ) =
-    noteToString note ++ qualityToString quality
+decodeChordTimeList : Decode.Decoder (List ChordTime)
+decodeChordTimeList =
+    Decode.keyValuePairs Decode.int
+        |> Decode.andThen decodeChordTime
+        |> Decode.andThen reverseDecodeList
 
 
-
------------------------------------------------------------------------
-
-
-type Note
-    = A
-    | As
-    | Bf
-    | B
-    | C
-    | Cs
-    | Df
-    | D
-    | Ds
-    | Ef
-    | E
-    | F
-    | Fs
-    | Gf
-    | G
-    | Gs
-    | Af
+reverseDecodeList : List a -> Decode.Decoder (List a)
+reverseDecodeList xs =
+    xs |> List.reverse |> Decode.succeed
 
 
-noteToString : Note -> String
-noteToString note =
-    case note of
-        A ->
-            "A"
-
-        As ->
-            "A#"
-
-        Bf ->
-            "Bb"
-
-        B ->
-            "B"
-
-        C ->
-            "C"
-
-        Cs ->
-            "C#"
-
-        Df ->
-            "Db"
-
-        D ->
-            "D"
-
-        Ds ->
-            "D#"
-
-        Ef ->
-            "Eb"
-
-        E ->
-            "E"
-
-        F ->
-            "F"
-
-        Fs ->
-            "F#"
-
-        Gf ->
-            "Gb"
-
-        G ->
-            "G"
-
-        Gs ->
-            "G#"
-
-        Af ->
-            "Ab"
+decodeChordTime : List ( String, Int ) -> Decode.Decoder (List ChordTime)
+decodeChordTime raw =
+    raw
+        |> List.map rawToChordTime
+        |> Decode.succeed
 
 
-
------------------------------------------------------------------------
-
-
-type Quality
-    = Major
-    | Minor
+rawToChordTime : ( String, Int ) -> ChordTime
+rawToChordTime ( s, i ) =
+    (,)
+        (Result.withDefault 0 (String.toFloat s))
+        (defaultChords !! i |> Maybe.withDefault Types.NoChord)
 
 
-qualityToString : Quality -> String
-qualityToString q =
-    case q of
-        Major ->
-            ""
-
-        Minor ->
-            "m"
-
-
-
------------------------------------------------------------------------
-
-
-sample : List ChordTime
-sample =
-    [ ( ( A, Minor ), 1.0 )
-    , ( ( B, Major ), 2.0 )
-    , ( ( B, Major ), 3.0 )
-    , ( ( D, Minor ), 4.0 )
-    , ( ( E, Major ), 5.0 )
-    , ( ( F, Major ), 6.0 )
-    , ( ( G, Major ), 7.0 )
-    , ( ( A, Major ), 8.0 )
-    , ( ( B, Major ), 9.0 )
-    , ( ( C, Major ), 10.0 )
-    , ( ( Cs, Minor ), 11.0 )
-    , ( ( Ds, Major ), 12.0 )
-    , ( ( Fs, Major ), 13.0 )
-    , ( ( Bf, Minor ), 14.0 )
-    , ( ( B, Major ), 15.0 )
-    , ( ( C, Major ), 16.0 )
-    , ( ( D, Major ), 17.0 )
-    , ( ( E, Major ), 18.0 )
-    , ( ( F, Minor ), 19.0 )
-    , ( ( G, Major ), 20.0 )
-    , ( ( A, Minor ), 21.0 )
-    , ( ( B, Major ), 22.0 )
-    , ( ( B, Major ), 23.0 )
-    , ( ( D, Minor ), 24.0 )
-    , ( ( E, Major ), 25.0 )
-    , ( ( F, Major ), 26.0 )
-    , ( ( G, Major ), 27.0 )
-    , ( ( A, Major ), 28.0 )
-    , ( ( B, Major ), 29.0 )
-    , ( ( C, Major ), 30.0 )
-    , ( ( Cs, Minor ), 31.0 )
-    , ( ( Ds, Major ), 32.0 )
-    , ( ( Fs, Major ), 33.0 )
-    , ( ( Bf, Minor ), 34.0 )
-    , ( ( B, Major ), 35.0 )
-    , ( ( C, Major ), 36.0 )
-    , ( ( D, Major ), 37.0 )
-    , ( ( E, Major ), 38.0 )
-    , ( ( F, Minor ), 39.0 )
-    , ( ( G, Major ), 40.0 )
+defaultChords : List Types.Chord
+defaultChords =
+    [ Types.Chord Types.A Types.Minor
+    , Types.Chord Types.Bf Types.Minor
+    , Types.Chord Types.B Types.Minor
+    , Types.Chord Types.C Types.Minor
+    , Types.Chord Types.Cs Types.Minor
+    , Types.Chord Types.D Types.Minor
+    , Types.Chord Types.Ds Types.Minor
+    , Types.Chord Types.E Types.Minor
+    , Types.Chord Types.F Types.Minor
+    , Types.Chord Types.Fs Types.Minor
+    , Types.Chord Types.G Types.Minor
+    , Types.Chord Types.Gs Types.Minor
+    , Types.Chord Types.A Types.Major
+    , Types.Chord Types.Bf Types.Major
+    , Types.Chord Types.B Types.Major
+    , Types.Chord Types.C Types.Major
+    , Types.Chord Types.Cs Types.Major
+    , Types.Chord Types.D Types.Major
+    , Types.Chord Types.Ds Types.Major
+    , Types.Chord Types.E Types.Major
+    , Types.Chord Types.F Types.Major
+    , Types.Chord Types.Fs Types.Major
+    , Types.Chord Types.G Types.Major
+    , Types.Chord Types.Gs Types.Major
+    , Types.NoChord
     ]

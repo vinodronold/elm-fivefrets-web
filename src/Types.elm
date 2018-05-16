@@ -46,3 +46,116 @@ decodeUrl =
 
 
 ---------------------------------------------------------------------------------------------------
+
+
+type Chord
+    = Chord Note Quality
+    | NoChord
+
+
+chordName : Chord -> String
+chordName chord =
+    case chord of
+        Chord note quality ->
+            noteToString note ++ qualityToString quality
+
+        NoChord ->
+            "N"
+
+
+type Note
+    = A
+    | As
+    | Bf
+    | B
+    | C
+    | Cs
+    | Df
+    | D
+    | Ds
+    | Ef
+    | E
+    | F
+    | Fs
+    | Gf
+    | G
+    | Gs
+    | Af
+
+
+noteToString : Note -> String
+noteToString note =
+    case note of
+        A ->
+            "A"
+
+        As ->
+            "A#"
+
+        Bf ->
+            "Bb"
+
+        B ->
+            "B"
+
+        C ->
+            "C"
+
+        Cs ->
+            "C#"
+
+        Df ->
+            "Db"
+
+        D ->
+            "D"
+
+        Ds ->
+            "D#"
+
+        Ef ->
+            "Eb"
+
+        E ->
+            "E"
+
+        F ->
+            "F"
+
+        Fs ->
+            "F#"
+
+        Gf ->
+            "Gb"
+
+        G ->
+            "G"
+
+        Gs ->
+            "G#"
+
+        Af ->
+            "Ab"
+
+
+
+---------------------------------------------------------------------------------------------------
+
+
+type Quality
+    = Major
+    | Minor
+
+
+qualityToString : Quality -> String
+qualityToString q =
+    case q of
+        Major ->
+            ""
+
+        Minor ->
+            "m"
+
+
+
+---------------------------------------------------------------------------------------------------

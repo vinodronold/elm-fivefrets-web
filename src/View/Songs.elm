@@ -21,7 +21,7 @@ displaySong song =
     E.link (Route.href <| Route.Player song.youtube_id) <|
         E.row S.SongItem
             [ A.spacing 5 ]
-            [ displaySongImg song
+            [ displaySongImg song.imgUrlDefault song.title
             , E.column S.None
                 [ A.spacing 5, A.verticalCenter ]
                 [ E.paragraph S.None [ A.paddingXY 10 0 ] [ E.text song.title ]
@@ -29,6 +29,6 @@ displaySong song =
             ]
 
 
-displaySongImg : Data.Song -> E.Element S.Styles variation msg
-displaySongImg song =
-    E.image S.None [ A.spread ] { src = Types.urlToString song.imgUrlDefault, caption = song.title }
+displaySongImg : Types.URL -> String -> E.Element S.Styles variation msg
+displaySongImg url caption =
+    E.image S.None [ A.spread ] { src = Types.urlToString url, caption = caption }

@@ -6,6 +6,8 @@ import Navigation exposing (Location)
 import Route exposing (Route)
 import Styles as S
 import Data.Songs as SongsData
+import Data.ChordTime as ChordTimeData
+import Data.Player as PlayerData
 import Window
 import View.Master as Master
 import View.Spinner as SpinnerView
@@ -15,6 +17,10 @@ import Dict
 import Pages.Home as HomePage
 import Pages.Errored as Errored
 import Http
+import Pages.Player as PlayerPage
+import Types
+import Ports
+import Time
 
 
 type Page
@@ -22,7 +28,7 @@ type Page
     | NotFound
     | Errored Errored.PageLoadError
     | Home
-    | Player
+    | Player PlayerPage.Model
 
 
 type PageState
@@ -62,6 +68,10 @@ type Msg
     | WindowResize Window.Size
     | SpinnerMsg Spinner.Msg
     | HomeLoaded (Result Http.Error SongsData.Songs)
+    | PlayerChordsLoaded Types.YouTubeID (Result Http.Error (List ChordTimeData.ChordTime))
+    | PlayerMsg PlayerPage.Msg
+    | PortMsg Ports.JSDataIn
+    | PortErr String
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -98,6 +108,62 @@ updatePage page msg model =
         ( HomeLoaded (Err errMessage), _ ) ->
             { model | pageState = Loaded (Errored <| Errored.pageLoadError <| toString errMessage) } ! []
 
+        ( PlayerChordsLoaded youTubeID (Ok chordtimes), _ ) ->
+            let
+                song =
+                    Dict.get (Types.youTubeIDtoString youTubeID) model.songs
+
+                ( pageState, songs ) =
+                    case song of
+                        Nothing ->
+                            ( Loaded (Errored <| Errored.pageLoadError "PlayerChordsLoaded | Some Player Issue . . .")
+                            , model.songs
+                            )
+
+                        Just s ->
+                            let
+                                songUpdated =
+                                    { s | chords = Just chordtimes }
+                            in
+                                ( Loaded (Player <| PlayerPage.init model.device songUpdated)
+                                , Dict.insert (Types.youTubeIDtoString youTubeID) songUpdated model.songs
+                                )
+            in
+                { model | pageState = pageState, songs = songs } ! []
+
+        ( PlayerChordsLoaded youTubeID (Err errMessage), _ ) ->
+            { model | pageState = Loaded (Errored <| Errored.pageLoadError <| toString errMessage) } ! []
+
+        ( PlayerMsg playerMsg, Loaded (Player playerModel) ) ->
+            let
+                ( subModel, subCmd ) =
+                    PlayerPage.update playerMsg playerModel
+            in
+                { model | pageState = Loaded (Player subModel) } ! [ Cmd.map PlayerMsg subCmd ]
+
+        ( PortMsg jsDataIn, Loaded (Player playerModel) ) ->
+            case jsDataIn of
+                Ports.JSPlayerStatus jsPlayerStatus ->
+                    let
+                        ( subModel, subCmd ) =
+                            PlayerPage.update
+                                (PlayerPage.UpdatePlayerStatus <| PlayerData.toPlayerStatus jsPlayerStatus)
+                                playerModel
+                    in
+                        { model | pageState = Loaded (Player subModel) } ! [ Cmd.map PlayerMsg subCmd ]
+
+                Ports.JSPlayerCurrTime currTime ->
+                    let
+                        ( subModel, subCmd ) =
+                            PlayerPage.update
+                                (PlayerPage.UpdatePlayerTime currTime)
+                                playerModel
+                    in
+                        { model | pageState = Loaded (Player subModel) } ! [ Cmd.map PlayerMsg subCmd ]
+
+        ( PortErr err, _ ) ->
+            model ! []
+
         ( _, Loaded NotFound ) ->
             -- Disregard incoming messages when we're on the
             -- NotFound page.
@@ -116,15 +182,22 @@ subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
         [ Window.resizes WindowResize
-        , spinnerSubscription model
+        , pageSubscriptions model
+        , Ports.pullJSDataToElm PortMsg PortErr
         ]
 
 
-spinnerSubscription : { a | pageState : PageState } -> Sub Msg
-spinnerSubscription { pageState } =
+pageSubscriptions : { a | pageState : PageState } -> Sub Msg
+pageSubscriptions { pageState } =
     case pageState of
         Loading _ ->
             Sub.map SpinnerMsg Spinner.subscription
+
+        Loaded (Player playerModel) ->
+            if playerModel.playerStatus == PlayerData.Playing then
+                Sub.map PlayerMsg <| Time.every (Time.second * 0.1) PlayerPage.Tick
+            else
+                Sub.none
 
         _ ->
             Sub.none
@@ -150,6 +223,9 @@ view model =
 
             Loaded Home ->
                 masterFrame <| HomePage.view model.songs
+
+            Loaded (Player playerModel) ->
+                masterFrame <| E.map PlayerMsg <| PlayerPage.view playerModel
 
             Loaded _ ->
                 masterFrame <| E.el S.None [] (E.text "TEST")
@@ -181,8 +257,32 @@ setRoute maybeRoute model =
                     ! [ cmd ]
 
         Just (Route.Player youTubeID) ->
-            { model | navOpen = False, pageState = Loading Spinner.init }
-                ! []
+            let
+                maybeSong =
+                    Dict.get (Types.youTubeIDtoString youTubeID) model.songs
+
+                ( pageState, cmd ) =
+                    case maybeSong of
+                        Nothing ->
+                            ( Loaded (Errored <| Errored.pageLoadError "MODEL EMPTY | Some Player Issue . . .")
+                            , Cmd.none
+                            )
+
+                        Just song ->
+                            case song.chords of
+                                Nothing ->
+                                    ( Loaded (Player <| PlayerPage.init model.device song)
+                                      --Loading Spinner.init
+                                    , Task.attempt (PlayerChordsLoaded song.youtube_id) <| PlayerPage.load song.youtube_id
+                                    )
+
+                                Just _ ->
+                                    ( Loaded (Player <| PlayerPage.init model.device song)
+                                    , Cmd.none
+                                    )
+            in
+                { model | navOpen = False, pageState = pageState }
+                    ! [ cmd ]
 
 
 
