@@ -21,6 +21,7 @@ import Pages.Player as PlayerPage
 import Types
 import Ports
 import Time
+import AnimationFrame
 
 
 type Page
@@ -195,7 +196,7 @@ pageSubscriptions { pageState } =
 
         Loaded (Player playerModel) ->
             if playerModel.playerStatus == PlayerData.Playing then
-                Sub.map PlayerMsg <| Time.every (Time.second * 0.1) PlayerPage.Tick
+                Sub.map PlayerMsg <| AnimationFrame.times PlayerPage.Tick
             else
                 Sub.none
 

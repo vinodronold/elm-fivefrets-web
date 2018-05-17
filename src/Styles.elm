@@ -142,12 +142,10 @@ stylesheet =
             []
         , S.style (ChordItem Inactive)
             [ Color.background appColors.lightPrimary
-            , Shadow.deep
             , S.cursor "pointer"
             ]
         , S.style (ChordItem Active)
             [ Color.background appColors.secondary
-            , Shadow.simple
             ]
         , S.style YouTubeSpace []
         , S.style LoadingBox

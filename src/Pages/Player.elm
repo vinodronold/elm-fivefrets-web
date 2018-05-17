@@ -96,7 +96,7 @@ update msg model =
                         Just chord ->
                             model.playedChords ++ chord :: []
             in
-                if playerTime > ChordTimeData.getTime model.currChord then
+                if playerTime > ChordTimeData.getTime (List.head model.nextChords) then
                     case model.nextChords of
                         x :: xs ->
                             { model | playerTime = Just playerTime, playedChords = getplayed, currChord = Just x, nextChords = xs }
@@ -196,15 +196,15 @@ getAllChords { playedChords, currChord, nextChords } =
 displayChords : Chords r -> E.Element S.Styles variation Msg
 displayChords chords =
     E.grid S.ChordGridContainer
-        [ A.spacing 10
-        , A.padding 10
+        [ A.spacing 1
+        , A.padding 1
         ]
         { columns = List.repeat (getBlocks chords.device) A.fill
         , rows = []
         , cells = chordsGridCells chords
         }
         |> E.el S.None
-            [ A.height <| A.px 150
+            [ A.height <| A.px 206
             , A.clip
             , A.id diplayChordDomID
             , A.inlineStyle [ ( "scroll-behavior", "smooth" ) ]
@@ -370,7 +370,7 @@ getBlocks { tablet, phone } =
     if phone || tablet then
         4
     else
-        8
+        16
 
 
 
@@ -379,7 +379,7 @@ getBlocks { tablet, phone } =
 
 getScrollYPos : Int -> Int -> Float
 getScrollYPos idx blocks =
-    toFloat ((idx // blocks) - 1) * 55
+    toFloat ((idx // blocks) - 1) * 41
 
 
 scrollToTop : Dom.Id -> Cmd Msg
